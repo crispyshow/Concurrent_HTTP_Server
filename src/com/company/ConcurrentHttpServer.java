@@ -44,6 +44,11 @@ public class ConcurrentHttpServer {
 
         try (ServerSocket server = new ServerSocket(PORT)) {
             while (true) {
+                // don't do this, because try-with block will close the connection after it goes
+                // out of scope and by the time you have that connection in the executor service
+                // thread it will already be closed
+                //
+                // you should always close the connection after the client is handled
                 try (Socket connection = server.accept()) {
                     Runnable task = new respondClientRequest(connection);
                     pool.submit(task);
