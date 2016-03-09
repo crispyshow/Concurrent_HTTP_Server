@@ -1,7 +1,7 @@
 package com.company;
 
 /* This project implements an concurrent HTTP server
-   The current version adds some features on the second stage (a concurrent server) :
+   The current version adds features on the second stage (a concurrent server) :
     1) get contentType,content and encoding from command line input
     2) make HTTP response Header
    The current server responds to the client with system time information
