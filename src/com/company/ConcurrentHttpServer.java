@@ -1,7 +1,7 @@
 package com.company;
 
 /* This project implements an concurrent HTTP server
-   The current version make the following changes to the last version:
+   The following changes were made to the last version:
     1) changes the improper use of try-with-resources on client socket, as pointed out by Jiayu
     2) gets file path from browser request instead of command line input
     3) supports the MIME type of .txt
