@@ -5,7 +5,7 @@ package com.company;
     1) changes the improper use of try-with-resources on client socket, as pointed out by Jiayu
     2) gets file path from browser request instead of command line input
     3) supports the MIME type of .txt
-    Bug remained: the header doesn't print properly
+    Bug remained: The header doesn't print properly
 */
 
 import java.net.*;
