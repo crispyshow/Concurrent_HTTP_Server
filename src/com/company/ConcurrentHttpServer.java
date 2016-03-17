@@ -1,15 +1,16 @@
 package com.company;
 
 /* This project implements an concurrent HTTP server
-   The current version adds features on the second stage (a concurrent server) :
-    1) get contentType,content and encoding from command line input
-    2) make HTTP response Header
-   The current server responds to the client with system time information
-   * Bugs do remain. The function responseHeader needs adjustments.
+   The current version make the following changes to the last version:
+    1) changes the improper use of try-with-resources on client socket, as pointed out by Jiayu
+    2) gets file path from browser request instead of command line input
+    3) supports the MIME type of .txt
+    Bug remained: the header doesn't print properly
 */
 
 import java.net.*;
 import java.io.*;
+import java.nio.file.Files;
 import java.util.Date;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -18,15 +19,6 @@ import java.util.concurrent.Executors;
 public class ConcurrentHttpServer {
 
     private static int PORT = 2555;
-    private static byte[] header;
-
-    //response首部制作函数
-    private void responseHeader(String encoding, String contentType, byte[] content){
-        String header = "HTTP/1.0 200 OK\r\n" + "Server: ConcurrentHTTPServer\r\n"
-                +"Content-length:" + content.length + "\r\n" + "Content-type" + contentType
-                + "; charset=" + encoding + "\r\n\r\n";
-        this.header = header.getBytes(encoding);
-    }
 
 
     // This function respond to clients with system time information
@@ -37,23 +29,69 @@ public class ConcurrentHttpServer {
             this.connection = connection;
         }
 
+        String statusLine;
+        String elements[];
+        String method;
+        String resourcePath;
+        String contentType;
+        String httpVersion;
+        byte[] content;
+
+
         @Override
         public void run(){
-            try (OutputStream os = connection.getOutputStream();
-                OutputStreamWriter out = new OutputStreamWriter(os)){
+            try {
+                InputStream is = connection.getInputStream();
+                InputStreamReader isr = new InputStreamReader(is);
+                BufferedReader br = new BufferedReader(isr);
+                OutputStream os = connection.getOutputStream();
 
-                //需要静态化函数,考虑将responseHeader以constructor形式构造
-                responseHeader(encoding, contentType, content);
-                Date today = new Date();
-                out.write(header);
-                out.write(today.toString() + "\n");
-                out.flush();
-                connection.close();
+                statusLine = br.readLine();
+                elements = statusLine.split("\\s+");
+                httpVersion = elements [2];
+                if (httpVersion.equals("HTTP/1.0")){
+                    method = elements[0];
+                    if (method.equals("GET")) {
+                        resourcePath = elements[1];
+                        contentType = URLConnection.getFileNameMap().getContentTypeFor(resourcePath);
+                        File file = new File(resourcePath);
+                            if (file.canRead()){
+                                content = Files.readAllBytes(file.toPath());
+                                //create status line and header
+                                Date today = new Date();
+                                // BUG: header cannot print properly on browser
+                                String header = "HTTP/1.0 200 OK\r\n";
+                                header = header.concat("Server: ConcurrentHTTPServer\r\n")
+                                        .concat("Date:" + today + "\r\n")
+                                        .concat("Content-length:" + content.length + "\r\n")
+                                        .concat("Content-type" + contentType)
+                                        .concat("\r\n\r\n");
+                                os.write(header.getBytes());
+                                //output resource
+                                os.write(content);
+                                os.flush();
+                            }
+                            else{
+                                // print status line for file not existed
+                            }
+                }else {
+                        // print status line for methods other than "GET"
+                    }
+                }else{
+                    // print status line for protocol other than "HTTP/1.0"
+                }
             }catch(IOException ex) {
                 System.err.println(ex);
+            }finally{
+                try{connection.close();
+                }catch(IOException e){
+                    System.err.println(e);
+                }
             }
+
         }
     }
+
 
     //The main function uses ExecutorService class to support concurrency
     public static void main(String[] args) {
@@ -67,18 +105,12 @@ public class ConcurrentHttpServer {
                 // thread it will already be closed
                 //
                 // you should always close the connection after the client is handled
-                try (Socket connection = server.accept()) {
-                    //通过command line的输入解析contentType,content,encoding
-                    String contentType = URLConnection.getFileNameMap().getContentTypeFor(args[0]);
-                    //byte[] content = ..   通过path读取数据
-                    String encoding = "UTF-8";
-                    If(args.length>2)
-                        encoding = args.[2];
-
+                try {
+                    Socket connection = server.accept();
                     Runnable task = new respondClientRequest(connection);
                     pool.submit(task);
 
-                } catch (IOException ex) {
+                }catch (IOException ex) {
                     System.err.println(ex);
                 }
             }
