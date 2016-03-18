@@ -13,3 +13,9 @@ This project implements an HTTP Server, which
 Progress Table
 Mar. 6th : implemeted a singlethreaded server socket
 Mar. 7th : modified the singlethreaded server with ExecutorService class to support concurrency
+
+## how to compile
+
+```
+    mvn compile
+```
